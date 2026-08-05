@@ -56,6 +56,16 @@
   .saved{font-size:12px;color:#5a8f5a}
   .saved.dirty{color:#b58900}
   .unit{font-size:12px;color:#666;border-left:1px solid #dde;padding-left:10px}
+  .toolbar.sync{margin-top:-4px;background:#fbfdff;border-color:#cfe0ee}
+  .toolbar.sync b{font-size:12px;color:#33587a}
+  .syncstate{font-size:12px;color:#666}
+  .syncstate.ok{color:#2f7d32}
+  .syncstate.warn{color:#b58900}
+  .syncstate.err{color:#c0392b}
+  .notice{
+    margin:0 0 10px;padding:9px 12px;background:#fff8e5;border:1px solid #f0d48a;
+    border-radius:6px;font-size:12.5px;color:#6b5300;display:flex;gap:8px;align-items:center;flex-wrap:wrap;
+  }
 
   /* ---------- layout ---------- */
   .cols{display:flex; gap:16px; align-items:flex-start; flex-wrap:wrap}
@@ -201,6 +211,23 @@
   <input type="file" id="fileInput" accept="application/json,.json" hidden>
 </div>
 
+<div class="toolbar sync">
+  <b>기기 간 동기화</b>
+  <span id="syncState" class="syncstate">확인 중…</span>
+  <button id="btnPull" hidden>저장소에서 불러오기</button>
+  <button id="btnPush" hidden>지금 올리기</button>
+  <label class="chk" id="autoWrap" hidden><input type="checkbox" id="autoPush" checked> 수정하면 자동으로 올리기</label>
+  <span class="spacer"></span>
+  <button id="btnToken">쓰기 토큰 등록</button>
+  <button id="btnTokenClear" class="danger" hidden>토큰 삭제</button>
+</div>
+
+<div class="notice" id="pullNotice" hidden>
+  저장소에 더 최신 데이터가 있습니다 (<span id="noticeAt"></span>).
+  <button id="btnPullNow">불러오기</button>
+  <button id="btnPullDismiss">나중에</button>
+</div>
+
 <div class="cols">
   <section class="left">
     <div class="scroller" id="mainScroller"></div>
@@ -277,6 +304,12 @@
    구조 정의 — 엑셀 시트(송가네재무제표)와 동일
    ========================================================= */
 const STORE_KEY = "songga-finance-v1";
+const TOKEN_KEY = "songga-finance-token";   // 이 브라우저에만 보관, 저장소에는 올라가지 않음
+const SYNC_KEY  = "songga-finance-synced";  // 마지막으로 맞춘 저장소 데이터의 시각
+
+/* 저장소를 데이터 원본으로 사용 (data.json) */
+const GH = { owner:"shway81-droid", repo:"finance-sheet", path:"data.json", branch:"main" };
+const GH_API = "https://api.github.com/repos/" + GH.owner + "/" + GH.repo + "/contents/" + GH.path;
 const PAIR  = ["혜정","화영"];
 const GIFT  = ["현준","민주"];
 
@@ -483,6 +516,96 @@ function deepMerge(base, over){
   return base;
 }
 
+/* =========================================================
+   저장소 동기화 (data.json)
+   - 읽기: 토큰 없이 누구나. 페이지를 열면 저장소 데이터를 확인합니다.
+   - 쓰기: 사용자가 직접 등록한 GitHub 토큰이 있을 때만.
+   ========================================================= */
+const token    = () => localStorage.getItem(TOKEN_KEY) || "";
+const syncedAt = () => localStorage.getItem(SYNC_KEY) || "";
+
+function b64(str){
+  const bytes = new TextEncoder().encode(str);
+  let bin = "", CH = 0x8000;
+  for (let i=0; i<bytes.length; i+=CH) bin += String.fromCharCode.apply(null, bytes.subarray(i, i+CH));
+  return btoa(bin);
+}
+function unb64(b){
+  const bin = atob(b.replace(/\s/g, ""));
+  const bytes = Uint8Array.from(bin, c => c.charCodeAt(0));
+  return new TextDecoder().decode(bytes);
+}
+function ghHeaders(){
+  const h = { "Accept":"application/vnd.github+json" };
+  if (token()) h["Authorization"] = "Bearer " + token();
+  return h;
+}
+function setSyncState(msg, kind){
+  const el = document.getElementById("syncState");
+  el.textContent = msg;
+  el.className = "syncstate" + (kind ? " " + kind : "");
+}
+
+/* 저장소의 현재 data.json 가져오기 → {state, sha} 또는 null */
+async function fetchRemote(){
+  const res = await fetch(GH_API + "?ref=" + GH.branch + "&t=" + Date.now(),
+                          { headers: ghHeaders(), cache:"no-store" });
+  if (res.status === 404) return null;                 // 아직 data.json 없음
+  if (!res.ok) throw new Error("HTTP " + res.status);
+  const meta = await res.json();
+  return { state: JSON.parse(unb64(meta.content)), sha: meta.sha };
+}
+
+/* 현재 상태를 저장소에 올리기 */
+async function publish(){
+  if (!token()) return { ok:false, msg:"토큰이 없습니다" };
+  let sha;
+  try { const r = await fetchRemote(); if (r) sha = r.sha; } catch(_){}
+
+  const body = JSON.parse(JSON.stringify(S));
+  body.updatedAt = new Date().toISOString();
+  const payload = {
+    message: "데이터 갱신 (" + body.periods.length + "개 기간)",
+    content: b64(JSON.stringify(body, null, 1)),
+    branch : GH.branch,
+  };
+  if (sha) payload.sha = sha;
+
+  const res = await fetch(GH_API, { method:"PUT", headers: ghHeaders(), body: JSON.stringify(payload) });
+  if (!res.ok){
+    const t = await res.text();
+    return { ok:false, msg:"HTTP " + res.status + " " + t.slice(0,140) };
+  }
+  S.updatedAt = body.updatedAt;
+  localStorage.setItem(SYNC_KEY, body.updatedAt);
+  localStorage.setItem(STORE_KEY, JSON.stringify(S));
+  return { ok:true, at: body.updatedAt };
+}
+
+let pushTimer = null;
+function schedulePush(){
+  if (!token()) return;
+  const auto = document.getElementById("autoPush");
+  if (auto && !auto.checked) return;
+  clearTimeout(pushTimer);
+  setSyncState("올리는 중…", "warn");
+  pushTimer = setTimeout(async ()=>{
+    try{
+      const r = await publish();
+      setSyncState(r.ok ? "저장소 반영됨 " + new Date(r.at).toLocaleTimeString("ko-KR")
+                        : "올리기 실패: " + r.msg, r.ok ? "ok" : "err");
+    }catch(e){ setSyncState("올리기 실패: " + e.message, "err"); }
+  }, 4000);
+}
+
+function renderSyncBar(){
+  const has = !!token();
+  document.getElementById("btnToken").hidden      = has;
+  document.getElementById("btnTokenClear").hidden = !has;
+  document.getElementById("btnPush").hidden       = !has;
+  document.getElementById("autoWrap").hidden      = !has;
+}
+
 let saveTimer = null;
 function save(){
   const tag = document.getElementById("savedTag");
@@ -497,6 +620,7 @@ function save(){
       console.error(e);
     }
   }, 250);
+  schedulePush();
 }
 
 /* =========================================================
@@ -949,7 +1073,87 @@ document.getElementById("btnReset").addEventListener("click", ()=>{
   S = seedData(); save(); renderAll();
 });
 
+/* ---------- 동기화 버튼 ---------- */
+document.getElementById("btnToken").addEventListener("click", ()=>{
+  const t = prompt(
+    "GitHub 토큰을 붙여넣으세요.\n\n" +
+    "· 이 브라우저에만 저장되고 저장소에는 올라가지 않습니다.\n" +
+    "· 없어도 읽기(다른 기기에서 보기)는 됩니다. 쓰기에만 필요합니다.\n" +
+    "· github.com → Settings → Developer settings → Personal access tokens →\n" +
+    "  Fine-grained tokens 에서 finance-sheet 저장소의 Contents: Read and write 권한으로 발급하세요.");
+  if (!t) return;
+  localStorage.setItem(TOKEN_KEY, t.trim());
+  renderSyncBar();
+  setSyncState("토큰 등록됨 — 이제 수정하면 자동으로 올라갑니다", "ok");
+});
+document.getElementById("btnTokenClear").addEventListener("click", ()=>{
+  if (!confirm("이 브라우저에 저장된 토큰을 지웁니다. 이후에는 읽기만 가능합니다. 진행할까요?")) return;
+  localStorage.removeItem(TOKEN_KEY);
+  renderSyncBar();
+  setSyncState("토큰 삭제됨 (읽기 전용)", "warn");
+});
+document.getElementById("btnPush").addEventListener("click", async ()=>{
+  setSyncState("올리는 중…", "warn");
+  try{
+    const r = await publish();
+    setSyncState(r.ok ? "저장소 반영됨 " + new Date(r.at).toLocaleTimeString("ko-KR") : "올리기 실패: " + r.msg,
+                 r.ok ? "ok" : "err");
+  }catch(e){ setSyncState("올리기 실패: " + e.message, "err"); }
+});
+
+async function pullRemote(){
+  setSyncState("불러오는 중…", "warn");
+  try{
+    const r = await fetchRemote();
+    if (!r){ setSyncState("저장소에 데이터가 없습니다", "warn"); return; }
+    r.state.periods.forEach(normalizePeriod);
+    migrate(r.state);
+    if (typeof r.state.selected !== "number" || r.state.selected >= r.state.periods.length)
+      r.state.selected = r.state.periods.length - 1;
+    S = r.state;
+    localStorage.setItem(STORE_KEY, JSON.stringify(S));
+    localStorage.setItem(SYNC_KEY, S.updatedAt || "");
+    document.getElementById("pullNotice").hidden = true;
+    renderAll();
+    setSyncState("저장소 데이터로 맞춤 (기간 " + S.periods.length + "개)", "ok");
+  }catch(e){ setSyncState("불러오기 실패: " + e.message, "err"); }
+}
+document.getElementById("btnPull").addEventListener("click", pullRemote);
+document.getElementById("btnPullNow").addEventListener("click", pullRemote);
+document.getElementById("btnPullDismiss").addEventListener("click", ()=>{
+  document.getElementById("pullNotice").hidden = true;
+});
+
+/* ---------- 시작 ---------- */
 renderAll();
+renderSyncBar();
+
+(async function boot(){
+  const hadLocal = !!localStorage.getItem(STORE_KEY);
+  document.getElementById("btnPull").hidden = false;
+  try{
+    const r = await fetchRemote();
+    if (!r){
+      setSyncState(token() ? "저장소에 data.json이 없습니다 — [지금 올리기]를 누르세요"
+                           : "저장소에 데이터가 없습니다", "warn");
+      return;
+    }
+    const remoteAt = r.state.updatedAt || "";
+    if (!hadLocal){                       // 이 기기 첫 방문 → 저장소 데이터를 그대로 사용
+      await pullRemote();
+      return;
+    }
+    if (remoteAt && remoteAt > syncedAt()){
+      document.getElementById("noticeAt").textContent = new Date(remoteAt).toLocaleString("ko-KR");
+      document.getElementById("pullNotice").hidden = false;
+      setSyncState("저장소에 더 최신 데이터가 있습니다", "warn");
+    } else {
+      setSyncState("저장소와 같음" + (remoteAt ? " (" + new Date(remoteAt).toLocaleString("ko-KR") + ")" : ""), "ok");
+    }
+  }catch(e){
+    setSyncState("저장소 확인 실패: " + e.message + " — 이 기기에서는 로컬 저장만 됩니다", "err");
+  }
+})();
 </script>
 </body>
 </html>

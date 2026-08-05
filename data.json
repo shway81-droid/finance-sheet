@@ -1,0 +1,483 @@
+{
+ "version": 2,
+ "periods": [
+  {
+   "label": "21년2월",
+   "useDetail": false,
+   "useVeh": false,
+   "v": {
+    "kbank": 0,
+    "deposit": 22848,
+    "savings": 0,
+    "chungyak": 0,
+    "longterm": null,
+    "lumpsum": 4000,
+    "allseason": null,
+    "index": null,
+    "single": null,
+    "btc": null,
+    "invEtc": 3633,
+    "life": 0,
+    "pensionIns": 2000,
+    "realestate": 65000,
+    "car": 1000,
+    "rentdep": 0,
+    "creditloan": 22000,
+    "debtEtc1": 0,
+    "leasedep": 40000,
+    "debtEtc2": 0
+   },
+   "detail": {
+    "yeongeum": {
+     "혜정": null,
+     "화영": null
+    },
+    "isa": {
+     "혜정": null,
+     "화영": null
+    },
+    "jeungyeo": {
+     "현준": null,
+     "민주": null
+    },
+    "coin": null,
+    "kbank": null,
+    "nh": {
+     "혜정": null,
+     "화영": null
+    },
+    "chungyak": null,
+    "longterm": {
+     "혜정": null,
+     "화영": null
+    },
+    "lumpsum": {
+     "혜정": null,
+     "화영": null
+    }
+   },
+   "veh": {
+    "paragon": null,
+    "sindae": 65000,
+    "santafe": null,
+    "grandeur": null
+   },
+   "mdd": {
+    "stock": 50,
+    "realestate": 20,
+    "coin": 100,
+    "cash": 0
+   }
+  },
+  {
+   "label": "22년 2월",
+   "useDetail": false,
+   "useVeh": false,
+   "v": {
+    "kbank": null,
+    "deposit": 1300,
+    "savings": 10000,
+    "chungyak": null,
+    "longterm": null,
+    "lumpsum": null,
+    "allseason": null,
+    "index": null,
+    "single": null,
+    "btc": null,
+    "invEtc": 14800,
+    "life": null,
+    "pensionIns": 2000,
+    "realestate": 127000,
+    "car": 1000,
+    "rentdep": null,
+    "creditloan": 28000,
+    "debtEtc1": null,
+    "leasedep": 80000,
+    "debtEtc2": null
+   },
+   "detail": {
+    "yeongeum": {
+     "혜정": null,
+     "화영": null
+    },
+    "isa": {
+     "혜정": null,
+     "화영": null
+    },
+    "jeungyeo": {
+     "현준": null,
+     "민주": null
+    },
+    "coin": null,
+    "kbank": null,
+    "nh": {
+     "혜정": null,
+     "화영": null
+    },
+    "chungyak": null,
+    "longterm": {
+     "혜정": null,
+     "화영": null
+    },
+    "lumpsum": {
+     "혜정": null,
+     "화영": null
+    }
+   },
+   "veh": {
+    "paragon": 54900,
+    "sindae": 72000,
+    "santafe": null,
+    "grandeur": null
+   },
+   "mdd": {
+    "stock": 50,
+    "realestate": 20,
+    "coin": 100,
+    "cash": 0
+   }
+  },
+  {
+   "label": "23년 2월",
+   "useDetail": false,
+   "useVeh": false,
+   "v": {
+    "kbank": null,
+    "deposit": 1823,
+    "savings": 10310,
+    "chungyak": null,
+    "longterm": null,
+    "lumpsum": null,
+    "allseason": 9073,
+    "index": 11598,
+    "single": 1019,
+    "btc": null,
+    "invEtc": null,
+    "life": null,
+    "pensionIns": 2000,
+    "realestate": 114250,
+    "car": 1000,
+    "rentdep": null,
+    "creditloan": 27000,
+    "debtEtc1": null,
+    "leasedep": 82000,
+    "debtEtc2": null
+   },
+   "detail": {
+    "yeongeum": {
+     "혜정": null,
+     "화영": null
+    },
+    "isa": {
+     "혜정": null,
+     "화영": null
+    },
+    "jeungyeo": {
+     "현준": null,
+     "민주": null
+    },
+    "coin": null,
+    "kbank": null,
+    "nh": {
+     "혜정": null,
+     "화영": null
+    },
+    "chungyak": null,
+    "longterm": {
+     "혜정": null,
+     "화영": null
+    },
+    "lumpsum": {
+     "혜정": null,
+     "화영": null
+    }
+   },
+   "veh": {
+    "paragon": 53500,
+    "sindae": 60750,
+    "santafe": null,
+    "grandeur": null
+   },
+   "mdd": {
+    "stock": 50,
+    "realestate": 20,
+    "coin": 100,
+    "cash": 0
+   }
+  },
+  {
+   "label": "24년 2월",
+   "useDetail": false,
+   "useVeh": false,
+   "v": {
+    "kbank": null,
+    "deposit": 1700,
+    "savings": 9088,
+    "chungyak": null,
+    "longterm": null,
+    "lumpsum": null,
+    "allseason": 9855,
+    "index": 11021,
+    "single": null,
+    "btc": null,
+    "invEtc": null,
+    "life": null,
+    "pensionIns": 3800,
+    "realestate": 107000,
+    "car": 4500,
+    "rentdep": null,
+    "creditloan": 27000,
+    "debtEtc1": null,
+    "leasedep": 75000,
+    "debtEtc2": null
+   },
+   "detail": {
+    "yeongeum": {
+     "혜정": null,
+     "화영": null
+    },
+    "isa": {
+     "혜정": null,
+     "화영": null
+    },
+    "jeungyeo": {
+     "현준": null,
+     "민주": null
+    },
+    "coin": null,
+    "kbank": null,
+    "nh": {
+     "혜정": null,
+     "화영": null
+    },
+    "chungyak": null,
+    "longterm": {
+     "혜정": null,
+     "화영": null
+    },
+    "lumpsum": {
+     "혜정": null,
+     "화영": null
+    }
+   },
+   "veh": {
+    "paragon": 50000,
+    "sindae": 57000,
+    "santafe": 1500,
+    "grandeur": 3000
+   },
+   "mdd": {
+    "stock": 50,
+    "realestate": 20,
+    "coin": 100,
+    "cash": 0
+   }
+  },
+  {
+   "label": "25년 2월",
+   "useDetail": false,
+   "useVeh": false,
+   "v": {
+    "kbank": 3039,
+    "deposit": 1886,
+    "savings": null,
+    "chungyak": 575,
+    "longterm": null,
+    "lumpsum": null,
+    "allseason": 5781,
+    "index": 25958,
+    "single": null,
+    "btc": null,
+    "invEtc": null,
+    "life": null,
+    "pensionIns": 4350,
+    "realestate": 104000,
+    "car": 4300,
+    "rentdep": 2100,
+    "creditloan": 27000,
+    "debtEtc1": null,
+    "leasedep": 75000,
+    "debtEtc2": null
+   },
+   "detail": {
+    "yeongeum": {
+     "혜정": null,
+     "화영": null
+    },
+    "isa": {
+     "혜정": null,
+     "화영": null
+    },
+    "jeungyeo": {
+     "현준": null,
+     "민주": null
+    },
+    "coin": null,
+    "kbank": null,
+    "nh": {
+     "혜정": null,
+     "화영": null
+    },
+    "chungyak": null,
+    "longterm": {
+     "혜정": null,
+     "화영": null
+    },
+    "lumpsum": {
+     "혜정": null,
+     "화영": null
+    }
+   },
+   "veh": {
+    "paragon": 47000,
+    "sindae": 57000,
+    "santafe": 1400,
+    "grandeur": 2900
+   },
+   "mdd": {
+    "stock": 50,
+    "realestate": 20,
+    "coin": 100,
+    "cash": 0
+   }
+  },
+  {
+   "label": "26년 2월",
+   "useDetail": true,
+   "useVeh": false,
+   "v": {
+    "kbank": null,
+    "deposit": null,
+    "savings": null,
+    "chungyak": null,
+    "longterm": null,
+    "lumpsum": null,
+    "allseason": null,
+    "index": null,
+    "single": null,
+    "btc": null,
+    "invEtc": null,
+    "life": null,
+    "pensionIns": 5591,
+    "realestate": 105000,
+    "car": 3700,
+    "rentdep": 2100,
+    "creditloan": 27000,
+    "debtEtc1": null,
+    "leasedep": 77000,
+    "debtEtc2": null
+   },
+   "detail": {
+    "yeongeum": {
+     "혜정": 4752,
+     "화영": 6392
+    },
+    "isa": {
+     "혜정": 2313,
+     "화영": 12943
+    },
+    "jeungyeo": {
+     "현준": 4137,
+     "민주": 4137
+    },
+    "coin": 704,
+    "kbank": 2600,
+    "nh": {
+     "혜정": 160,
+     "화영": 2100
+    },
+    "chungyak": 596,
+    "longterm": {
+     "혜정": 1077,
+     "화영": 2216
+    },
+    "lumpsum": {
+     "혜정": 1018,
+     "화영": 6025
+    }
+   },
+   "veh": {
+    "paragon": 49000,
+    "sindae": 56000,
+    "santafe": 1200,
+    "grandeur": 2400
+   },
+   "mdd": {
+    "stock": 50,
+    "realestate": 20,
+    "coin": 100,
+    "cash": 0
+   }
+  },
+  {
+   "label": "26년 8월",
+   "useDetail": true,
+   "useVeh": false,
+   "v": {
+    "kbank": null,
+    "deposit": null,
+    "savings": null,
+    "chungyak": null,
+    "longterm": null,
+    "lumpsum": null,
+    "allseason": null,
+    "index": null,
+    "single": null,
+    "btc": null,
+    "invEtc": null,
+    "life": null,
+    "pensionIns": null,
+    "realestate": null,
+    "car": null,
+    "rentdep": null,
+    "creditloan": null,
+    "debtEtc1": null,
+    "leasedep": null,
+    "debtEtc2": null
+   },
+   "detail": {
+    "yeongeum": {
+     "혜정": 1,
+     "화영": 1
+    },
+    "isa": {
+     "혜정": 1,
+     "화영": 1
+    },
+    "jeungyeo": {
+     "현준": 1,
+     "민주": 1
+    },
+    "coin": null,
+    "kbank": null,
+    "nh": {
+     "혜정": null,
+     "화영": null
+    },
+    "chungyak": null,
+    "longterm": {
+     "혜정": null,
+     "화영": null
+    },
+    "lumpsum": {
+     "혜정": null,
+     "화영": null
+    }
+   },
+   "veh": {
+    "paragon": null,
+    "sindae": null,
+    "santafe": null,
+    "grandeur": null
+   },
+   "mdd": {
+    "stock": 50,
+    "realestate": 20,
+    "coin": 100,
+    "cash": 0
+   }
+  }
+ ],
+ "selected": 6,
+ "updatedAt": "2026-08-05T02:02:28.747Z"
+}
