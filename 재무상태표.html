@@ -1,0 +1,955 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>송가네 재무제표</title>
+<style>
+  :root{
+    --line:#7f7f7f;
+    --line-soft:#bfbfbf;
+    --hdr-asset:#ddebf7;
+    --hdr-asset-strong:#bdd7ee;
+    --sum-blue:#2e75b6;
+    --sum-blue-dark:#1f4e79;
+    --hdr-debt:#fce4d6;
+    --sum-orange:#ed7d31;
+    --sum-orange-dark:#c55a11;
+    --hdr-net:#c6e0b4;
+    --net-fill:#fff2cc;
+    --alloc-title:#c6e0b4;
+    --alloc-hdr:#ffe699;
+    --alloc-label:#ffd966;
+    --banner:#fff2cc;
+    --computed:#f2f7fb;
+    --ink:#1a1a1a;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; padding:16px 18px 60px;
+    font-family:"맑은 고딕","Malgun Gothic",-apple-system,"Segoe UI",sans-serif;
+    font-size:13px; color:var(--ink); background:#f5f6f8;
+  }
+  h1{font-size:16px;margin:0 0 2px}
+  .banner{
+    background:var(--banner); border:1px solid var(--line);
+    padding:10px 14px; text-align:center; font-weight:700; line-height:1.6;
+    border-radius:3px;
+  }
+  .banner small{display:block;font-weight:400;color:#7f6000}
+
+  /* ---------- toolbar ---------- */
+  .toolbar{
+    display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    margin:14px 0 10px; padding:9px 11px;
+    background:#fff; border:1px solid #d7dbe0; border-radius:6px;
+  }
+  button{
+    font:inherit; padding:5px 11px; border:1px solid #b9c0c8; border-radius:4px;
+    background:#fff; cursor:pointer;
+  }
+  button:hover{background:#eef3f8; border-color:#8fa9c4}
+  button.primary{background:#2e75b6;border-color:#2e75b6;color:#fff}
+  button.primary:hover{background:#255e93}
+  button.danger:hover{background:#fdecea;border-color:#d9534f;color:#b52b27}
+  .spacer{flex:1}
+  .saved{font-size:12px;color:#5a8f5a}
+  .saved.dirty{color:#b58900}
+  .unit{font-size:12px;color:#666;border-left:1px solid #dde;padding-left:10px}
+
+  /* ---------- layout ---------- */
+  .cols{display:flex; gap:16px; align-items:flex-start; flex-wrap:wrap}
+  .left{flex:0 1 auto; min-width:0; max-width:100%}
+  .right{flex:0 1 430px; min-width:340px; display:flex; flex-direction:column; gap:14px}
+  .card{background:#fff;border:1px solid #d7dbe0;border-radius:6px;padding:12px}
+  .card > h2{font-size:13px;margin:0 0 9px;color:#444}
+
+  /* ---------- grid tables ---------- */
+  .scroller{
+    display:inline-block; max-width:100%; vertical-align:top;
+    overflow-x:auto; background:#fff; border:1px solid #d7dbe0; border-radius:6px; padding:10px;
+  }
+  table.grid{
+    border-collapse:separate; border-spacing:0; table-layout:fixed; background:#fff;
+    width:max-content; min-width:100%;
+  }
+  table.grid + table.grid{margin-top:0}
+  .grid th,.grid td{
+    border:1px solid var(--line); border-width:0 1px 1px 0;
+    padding:3px 6px; height:24px; white-space:nowrap; background:#fff;
+  }
+  .grid tr > *:first-child{border-left-width:1px}
+  .grid tr:first-child > *{border-top-width:1px}
+  .grid .c-div{width:62px}
+  .grid .c-item{width:104px}
+  .grid .c-per{width:92px}
+  th{font-weight:700;text-align:center}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  td.mid,th.mid{text-align:center}
+
+  /* sticky left columns */
+  .sticky1{position:sticky;left:0;z-index:3}
+  .sticky2{position:sticky;left:62px;z-index:3}
+
+  .hdr{background:var(--hdr-asset-strong)}
+  .hdr-debt{background:var(--hdr-debt)}
+  .hdr-net{background:var(--hdr-net)}
+  .band{background:var(--hdr-asset);font-weight:700;text-align:center}
+  .band-debt{background:var(--hdr-debt);font-weight:700;text-align:center}
+  .grp{background:#fff;text-align:center;font-weight:700;vertical-align:middle}
+  .sum td,.sum th{background:var(--sum-blue);color:#fff;font-weight:700}
+  .grand td,.grand th{background:var(--sum-blue-dark);color:#fff;font-weight:700}
+  .sum-d td,.sum-d th{background:var(--sum-orange);color:#fff;font-weight:700}
+  .grand-d td,.grand-d th{background:var(--sum-orange-dark);color:#fff;font-weight:700}
+  .netrow td,.netrow th{background:var(--net-fill);font-weight:700}
+  .growth td,.growth th{background:#fdf3d7}
+  .up{color:#c00000}
+  .down{color:#1f5fbf}
+
+  /* inputs */
+  input.cell{
+    width:100%; border:0; padding:0; margin:0; background:transparent;
+    font:inherit; text-align:right; font-variant-numeric:tabular-nums; color:inherit;
+    outline:none; min-width:0;
+  }
+  input.cell:focus{background:#fff6cc; box-shadow:inset 0 0 0 2px #f0b400}
+  td.locked{background:var(--computed);color:#33587a}
+  td.locked::after{content:"·";color:#8fb4d6}
+  .sum input.cell,.grand input.cell{color:#fff}
+
+  /* period header cell */
+  th.perhdr{position:relative;padding-right:16px}
+  th.perhdr input{
+    width:100%;border:0;background:transparent;font:inherit;font-weight:700;
+    text-align:center;outline:none;min-width:0;
+  }
+  th.perhdr input:focus{background:#fff6cc}
+
+  /* ---------- detail panel ---------- */
+  table.mini{border-collapse:separate;border-spacing:0;table-layout:fixed;width:100%}
+  .mini th,.mini td{border:1px solid var(--line);border-width:0 1px 1px 0;padding:3px 6px;height:24px}
+  .mini tr > *:first-child{border-left-width:1px}
+  .mini tr:first-child > *{border-top-width:1px}
+  .mini .lbl{text-align:center;font-weight:700;vertical-align:middle;background:#fff}
+  .mini .who{text-align:center;background:#fff}
+  .mini td.num{text-align:right;font-variant-numeric:tabular-nums}
+  .mini .tot{background:var(--computed);font-weight:700}
+  .mini .cap{background:var(--hdr-asset);font-weight:700;text-align:center}
+
+  /* 참고(고정) 표 */
+  .refcard{margin-top:14px}
+  .refcard h3{font-size:12px;margin:14px 0 6px;color:#444}
+  table.ref{table-layout:auto;width:auto}
+  .ref th{background:var(--hdr-asset);font-weight:700;text-align:center;white-space:nowrap}
+  .ref td{text-align:center;white-space:nowrap}
+  .ref th,.ref td{padding:3px 14px}
+
+  .pill{
+    font-size:11.5px;color:#33587a;background:var(--computed);
+    border:1px solid #cfe0ee;border-radius:10px;padding:1px 8px;
+  }
+
+  .detailhead{display:flex;gap:8px;align-items:center;margin-bottom:9px;flex-wrap:wrap}
+  select{font:inherit;padding:4px 6px;border:1px solid #b9c0c8;border-radius:4px}
+  label.chk{display:flex;gap:5px;align-items:center;font-size:12px;color:#555;cursor:pointer}
+  .hint{font-size:11.5px;color:#777;margin-top:7px;line-height:1.5}
+
+  /* ---------- allocation ---------- */
+  .alloc .cap{background:var(--alloc-title)}
+  .alloc tr.ahdr th{background:var(--alloc-hdr);text-align:center}
+  .alloc td.rowlbl{background:var(--alloc-label);font-weight:700;text-align:center}
+  .alloc td{text-align:right;font-variant-numeric:tabular-nums}
+
+  /* ---------- chart ---------- */
+  .chart{width:100%;height:200px;display:block}
+  .chart .bar{fill:#4472c4}
+  .chart .bar:hover{fill:#2e5aa8}
+  .chart text{font-size:9px;fill:#555}
+  .chart .gl{stroke:#e3e3e3;stroke-width:1}
+
+  .warn{
+    margin-top:8px;padding:8px 10px;background:#fff8e5;border:1px solid #f0d48a;
+    border-radius:4px;font-size:11.5px;color:#6b5300;line-height:1.55;
+  }
+
+  @media print{
+    body{background:#fff;padding:0}
+    .toolbar,.hint,.warn{display:none}
+    .scroller{overflow:visible;border:0;padding:0}
+    .card{border:0;padding:0}
+  }
+</style>
+</head>
+<body>
+
+<div class="banner">
+  경제적 자유를 위하여: 기간, 수익률, 자금, 변동성, 자산배분, 마음
+  <small>- 기술사 벤자민</small>
+</div>
+
+<div class="toolbar">
+  <button class="primary" id="btnAdd">＋ 기간 추가</button>
+  <button id="btnDup">직전 기간 복사해 추가</button>
+  <button class="danger" id="btnDel">기간 삭제</button>
+  <span class="unit">단위: 만원</span>
+  <span class="spacer"></span>
+  <button id="btnExport">JSON 내보내기</button>
+  <button id="btnImport">JSON 불러오기</button>
+  <button id="btnPrint">인쇄</button>
+  <button class="danger" id="btnReset">초기화</button>
+  <span class="saved" id="savedTag">저장됨</span>
+  <input type="file" id="fileInput" accept="application/json,.json" hidden>
+</div>
+
+<div class="cols">
+  <section class="left">
+    <div class="scroller" id="mainScroller"></div>
+
+    <div class="card refcard">
+      <h2>참고 (고정값)</h2>
+
+      <table class="mini ref">
+        <tr><th>수익률</th><th>연저축</th><th>MDD</th><th>주식60</th></tr>
+        <tr><td>0.08</td><td>1500만</td><td>32</td><td>현금40</td></tr>
+      </table>
+
+      <h3>포트폴리오비주얼라이저계산</h3>
+      <table class="mini ref">
+        <tr><th>연도</th><td>2024</td><td>2030</td><td>2043</td></tr>
+        <tr><th>자산변화</th><td>4.5억</td><td>8.24억</td><td>30.22억</td></tr>
+      </table>
+
+      <h3>1972-2024</h3>
+      <table class="mini ref">
+        <tr><th>비율</th><td>5050</td><td>6040</td><td>100</td></tr>
+        <tr><th>수익률</th><td>8.05</td><td>8.65</td><td>10.74</td></tr>
+        <tr><th>MDD</th><td>26.83</td><td>32.02</td><td>50.89</td></tr>
+      </table>
+    </div>
+  </section>
+
+  <aside class="right">
+    <div class="card">
+      <h2>순자산 추이</h2>
+      <div id="chart"></div>
+    </div>
+
+    <div class="card">
+      <div class="detailhead">
+        <h2 style="margin:0">주요 자산현황</h2>
+        <select id="periodSel"></select>
+        <label class="chk"><input type="checkbox" id="useDetail"> 상세 입력 사용</label>
+      </div>
+      <div id="detailBox"></div>
+      <div class="hint">
+        상세 입력을 켜면 <b>카뱅·예금(농협)·청약저축·장기저축·목돈급여·지수·비트코인</b> 항목이
+        아래 상세 합계로 자동 계산되어 좌측 표에 채워집니다. 끄면 좌측 표에 직접 입력합니다.
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="detailhead">
+        <h2 style="margin:0">부동산·자동차 계산</h2>
+        <span class="pill" id="vehPeriod"></span>
+        <label class="chk"><input type="checkbox" id="useVeh"> 합계를 자산표에 반영</label>
+      </div>
+      <div id="vehBox"></div>
+      <div class="hint">
+        부동산 = 파라곤 + 신대, 자동차 = 싼타페 + 그렌져(헤이딜러 시세)입니다.
+        체크를 켜면 좌측 표의 <b>부동산·자동차</b> 칸이 이 합계로 자동 계산됩니다.
+        엑셀 원본은 이 값을 손으로 옮겨 적어 일부 기간이 합계와 다르므로, 기본값은 꺼둔 상태입니다.
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>자산배분</h2>
+      <div id="allocBox"></div>
+      <div class="hint">부동산 = 순자산 − 주식 − 코인 − 현금성자산 (엑셀과 동일한 잔차 방식)</div>
+      <div class="warn" id="allocWarn"></div>
+    </div>
+  </aside>
+</div>
+
+<script>
+"use strict";
+
+/* =========================================================
+   구조 정의 — 엑셀 시트(송가네재무제표)와 동일
+   ========================================================= */
+const STORE_KEY = "songga-finance-v1";
+const PAIR  = ["혜정","화영"];
+const GIFT  = ["현준","민주"];
+
+const ASSET_SECTIONS = [
+  { id:"cash",   label:"현금자산", rows:[
+    { k:"kbank",     n:"카뱅",         d:"kbank"    },
+    { k:"deposit",   n:"예금",         d:"nh"       },
+    { k:"savings",   n:"정기예/적금"                },
+    { k:"chungyak",  n:"청약저축",     d:"chungyak" },
+    { k:"longterm",  n:"장기저축",     d:"longterm" },
+    { k:"lumpsum",   n:"목돈급여",     d:"lumpsum"  },
+  ]},
+  { id:"invest", label:"투자자산", rows:[
+    { k:"allseason", n:"올시즌"                     },
+    { k:"index",     n:"지수",         d:"index"    },
+    { k:"single",    n:"개별"                       },
+    { k:"btc",       n:"비트코인",     d:"coin"     },
+    { k:"invEtc",    n:"기타"                       },
+  ]},
+  { id:"insure", label:"보험자산", rows:[
+    { k:"life",      n:"생명/상해보험"              },
+    { k:"pensionIns",n:"연금보험"                   },
+  ]},
+  { id:"use",    label:"사용자산", rows:[
+    { k:"realestate",n:"부동산",       veh:"estate" },
+    { k:"car",       n:"자동차",       veh:"car"    },
+    { k:"rentdep",   n:"월세보증"                   },
+  ]},
+];
+
+const DEBT_SECTIONS = [
+  { id:"debt1", rows:[ {k:"creditloan", n:"신용대출"}, {k:"debtEtc1", n:"기타"} ]},
+  { id:"debt2", rows:[ {k:"leasedep",   n:"임대보증금"}, {k:"debtEtc2", n:"기타"} ]},
+];
+
+const ALL_ROW_KEYS = []
+  .concat(...ASSET_SECTIONS.map(s => s.rows.map(r => r.k)))
+  .concat(...DEBT_SECTIONS.map(s => s.rows.map(r => r.k)));
+
+/* =========================================================
+   기본 데이터 — 엑셀 21년2월 ~ 26년2월 그대로
+   ========================================================= */
+function emptyDetail(){
+  return {
+    yeongeum:{ "혜정":null, "화영":null },   // 연금저축
+    isa:     { "혜정":null, "화영":null },
+    jeungyeo:{ "현준":null, "민주":null },   // 증여
+    coin: null,
+    kbank: null,
+    nh:      { "혜정":null, "화영":null },   // 농협
+    chungyak: null,
+    longterm:{ "혜정":null, "화영":null },
+    lumpsum: { "혜정":null, "화영":null },
+  };
+}
+function emptyValues(){
+  const v = {};
+  ALL_ROW_KEYS.forEach(k => v[k] = null);
+  return v;
+}
+/* 부동산·자동차 산출 근거 (엑셀 57~59행, 64~66행) */
+function emptyVeh(){
+  return { paragon:null, sindae:null, santafe:null, grandeur:null };
+}
+function newPeriod(label){
+  return {
+    label: label || "새 기간",
+    useDetail: true,
+    useVeh: false,
+    v: emptyValues(),
+    detail: emptyDetail(),
+    veh: emptyVeh(),
+    mdd: { stock:50, realestate:20, coin:100, cash:0 },
+  };
+}
+function mkPeriod(label, vals, opts){
+  const p = newPeriod(label);
+  p.useDetail = false;
+  Object.assign(p.v, vals);
+  if (opts) Object.assign(p, opts);
+  return p;
+}
+
+function seedData(){
+  const periods = [
+    mkPeriod("21년2월", {
+      kbank:0, deposit:22848, savings:0, chungyak:0, lumpsum:4000,
+      invEtc:3633, life:0, pensionIns:2000,
+      realestate:65000, car:1000, rentdep:0,
+      creditloan:22000, debtEtc1:0, leasedep:40000, debtEtc2:0,
+    }),
+    mkPeriod("22년 2월", {
+      deposit:1300, savings:10000,
+      invEtc:14800, pensionIns:2000,
+      realestate:127000, car:1000,
+      creditloan:28000, leasedep:80000,
+    }),
+    mkPeriod("23년 2월", {
+      deposit:1823, savings:10310,
+      allseason:9073, index:11598, single:1019, pensionIns:2000,
+      realestate:114250, car:1000,
+      creditloan:27000, leasedep:82000,
+    }),
+    mkPeriod("24년 2월", {
+      deposit:1700, savings:9088,
+      allseason:9855, index:11021, pensionIns:3800,
+      realestate:107000, car:4500,
+      creditloan:27000, leasedep:75000,
+    }),
+    mkPeriod("25년 2월", {
+      kbank:3039, deposit:1886, chungyak:575,
+      allseason:5781, index:25958, pensionIns:4350,
+      realestate:104000, car:4300, rentdep:2100,
+      creditloan:27000, leasedep:75000,
+    }),
+  ];
+
+  const last = newPeriod("26년 2월");
+  last.useDetail = true;
+  last.detail = {
+    yeongeum:{ "혜정":4752, "화영":6392 },
+    isa:     { "혜정":2313, "화영":12943 },
+    jeungyeo:{ "현준":4137, "민주":4137 },
+    coin: 704,
+    kbank: 2600,
+    nh:      { "혜정":160,  "화영":2100 },
+    chungyak: 596,
+    longterm:{ "혜정":1077, "화영":2216 },
+    lumpsum: { "혜정":1018, "화영":6025 },
+  };
+  Object.assign(last.v, {
+    pensionIns:5591,
+    realestate:105000, car:3700, rentdep:2100,
+    creditloan:27000, leasedep:77000,
+  });
+  periods.push(last);
+
+  /* 부동산(파라곤·신대) / 자동차(싼타페·그렌져, 헤이딜러 시세) — 엑셀 57~59, 64~66행 */
+  const VEH = {
+    paragon : [null,  54900, 53500, 50000, 47000, 49000],
+    sindae  : [65000, 72000, 60750, 57000, 57000, 56000],
+    santafe : [null,  null,  null,  1500,  1400,  1200 ],
+    grandeur: [null,  null,  null,  3000,  2900,  2400 ],
+  };
+  periods.forEach((p,i)=>{
+    Object.keys(VEH).forEach(k => p.veh[k] = VEH[k][i]);
+  });
+
+  return { version:2, periods, selected: periods.length - 1 };
+}
+
+/* =========================================================
+   상태
+   ========================================================= */
+let S = load();
+
+function load(){
+  try{
+    const raw = localStorage.getItem(STORE_KEY);
+    if (!raw) return seedData();
+    const d = JSON.parse(raw);
+    if (!d || !Array.isArray(d.periods) || !d.periods.length) return seedData();
+    d.periods.forEach(normalizePeriod);
+    migrate(d);
+    if (typeof d.selected !== "number" || d.selected >= d.periods.length) d.selected = d.periods.length - 1;
+    return d;
+  }catch(e){
+    console.warn("저장 데이터를 읽지 못해 기본값으로 시작합니다.", e);
+    return seedData();
+  }
+}
+/* 파라곤·신대·싼타페·그렌져 블록이 추가되기 전에 저장된 데이터 보정.
+   기간 이름이 같고 아직 비어 있는 경우에만 원본 값을 채웁니다(입력한 값은 건드리지 않음). */
+function migrate(d){
+  if ((d.version || 1) >= 2) return;
+  const seed = seedData();
+  const byLabel = new Map(seed.periods.map(p => [p.label, p]));
+  d.periods.forEach(p=>{
+    const src = byLabel.get(p.label);
+    if (!src) return;
+    const empty = Object.keys(p.veh).every(k => p.veh[k] === null || p.veh[k] === undefined);
+    if (empty) p.veh = Object.assign({}, src.veh);
+  });
+  d.version = 2;
+}
+
+function normalizePeriod(p){
+  const base = newPeriod(p.label);
+  p.v = Object.assign(base.v, p.v || {});
+  p.detail = deepMerge(base.detail, p.detail || {});
+  p.veh = Object.assign(base.veh, p.veh || {});
+  p.mdd = Object.assign(base.mdd, p.mdd || {});
+  if (typeof p.useDetail !== "boolean") p.useDetail = false;
+  if (typeof p.useVeh !== "boolean") p.useVeh = false;
+  if (typeof p.label !== "string") p.label = "기간";
+  return p;
+}
+function deepMerge(base, over){
+  Object.keys(over).forEach(k=>{
+    if (base[k] && typeof base[k] === "object" && typeof over[k] === "object" && over[k] !== null)
+      deepMerge(base[k], over[k]);
+    else base[k] = over[k];
+  });
+  return base;
+}
+
+let saveTimer = null;
+function save(){
+  const tag = document.getElementById("savedTag");
+  tag.textContent = "저장 중…"; tag.classList.add("dirty");
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(()=>{
+    try{
+      localStorage.setItem(STORE_KEY, JSON.stringify(S));
+      tag.textContent = "저장됨"; tag.classList.remove("dirty");
+    }catch(e){
+      tag.textContent = "저장 실패"; tag.classList.add("dirty");
+      console.error(e);
+    }
+  }, 250);
+}
+
+/* =========================================================
+   계산 — 엑셀 수식 그대로
+   ========================================================= */
+const num = x => (x === null || x === undefined || x === "" || isNaN(x)) ? 0 : Number(x);
+const sumObj = o => Object.keys(o).reduce((a,k)=>a+num(o[k]), 0);
+
+/* 상세 블록에서 파생되는 값 */
+function detailValue(p, dkey){
+  const d = p.detail;
+  switch(dkey){
+    case "kbank":    return num(d.kbank);
+    case "nh":       return sumObj(d.nh);
+    case "chungyak": return num(d.chungyak);
+    case "longterm": return sumObj(d.longterm);
+    case "lumpsum":  return sumObj(d.lumpsum);
+    case "index":    return sumObj(d.yeongeum) + sumObj(d.isa) + sumObj(d.jeungyeo);
+    case "coin":     return num(d.coin);
+    default:         return 0;
+  }
+}
+function detailCashTotal(p){
+  return detailValue(p,"kbank") + detailValue(p,"nh") + detailValue(p,"chungyak")
+       + detailValue(p,"longterm") + detailValue(p,"lumpsum");
+}
+/* 부동산 = 파라곤 + 신대, 자동차 = 싼타페 + 그렌져 */
+function vehValue(p, key){
+  const v = p.veh;
+  return key === "estate" ? num(v.paragon) + num(v.sindae)
+                          : num(v.santafe) + num(v.grandeur);
+}
+/* 해당 기간의 특정 항목 값 (상세 연동 여부 반영) */
+function cellValue(p, row){
+  if (row.d   && p.useDetail) return detailValue(p, row.d);
+  if (row.veh && p.useVeh)    return vehValue(p, row.veh);
+  return num(p.v[row.k]);
+}
+function isLocked(p, row){
+  return !!((row.d && p.useDetail) || (row.veh && p.useVeh));
+}
+
+function sectionTotal(p, sec){
+  return sec.rows.reduce((a,r)=>a + cellValue(p,r), 0);
+}
+function calc(p){
+  const c = {};
+  ASSET_SECTIONS.forEach(s => c[s.id] = sectionTotal(p, s));
+  DEBT_SECTIONS.forEach(s => c[s.id] = sectionTotal(p, s));
+  c.assetTotal = ASSET_SECTIONS.reduce((a,s)=>a+c[s.id], 0);
+  c.debtTotal  = DEBT_SECTIONS.reduce((a,s)=>a+c[s.id], 0);
+  c.net = c.assetTotal - c.debtTotal;
+  return c;
+}
+/* 자산배분 — 엑셀 관계식 유지 */
+function allocation(p){
+  const c = calc(p);
+  const stock = ASSET_SECTIONS[1].rows          // 투자자산 중 비트코인 제외
+    .filter(r => r.k !== "btc")
+    .reduce((a,r)=>a + cellValue(p,r), 0);
+  const coin = cellValue(p, ASSET_SECTIONS[1].rows.find(r=>r.k==="btc"));
+  const cash = c.cash;
+  const total = c.net;
+  const realestate = total - stock - coin - cash;   // 잔차
+  const amt = { stock, realestate, coin, cash, total };
+  const ratio = {};
+  ["stock","realestate","coin","cash"].forEach(k => ratio[k] = total ? amt[k]/total : 0);
+  ratio.total = ["stock","realestate","coin","cash"].reduce((a,k)=>a+ratio[k], 0);
+  const conv = {};
+  ["stock","realestate","coin","cash"].forEach(k => conv[k] = ratio[k] * num(p.mdd[k]));
+  conv.total = ["stock","realestate","coin","cash"].reduce((a,k)=>a+conv[k], 0);
+  return { amt, ratio, conv, calc:c };
+}
+
+/* =========================================================
+   렌더 헬퍼
+   ========================================================= */
+const fmt = n => (n === 0 ? "0" : Math.round(n).toLocaleString("ko-KR"));
+const fmtBlank = n => (n === 0 ? "" : Math.round(n).toLocaleString("ko-KR"));
+const fmtDec = (n,d) => Number(n).toFixed(d).replace(/\.?0+$/,"") || "0";
+const esc = s => String(s).replace(/[&<>"]/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[m]));
+
+/* 숫자 입력칸: data-path 로 값 위치를 지정 */
+function inputCell(path, value){
+  const shown = (value === null || value === undefined || value === "") ? "" : value;
+  return '<input class="cell" type="text" inputmode="numeric" data-path="'+path+'" value="'+shown+'">';
+}
+/* 경로로 값 읽기/쓰기 : "p.3.v.kbank" / "p.5.detail.nh.혜정" / "p.5.mdd.stock" */
+function setByPath(path, val){
+  const seg = path.split(".");
+  let o = S.periods[Number(seg[1])];
+  for (let i=2; i<seg.length-1; i++) o = o[seg[i]];
+  o[seg[seg.length-1]] = val;
+}
+
+/* =========================================================
+   메인 표
+   ========================================================= */
+function renderMain(){
+  const P = S.periods;
+  const cs = P.map(calc);
+  const colgroup = '<colgroup><col class="c-div"><col class="c-item">'
+    + P.map(()=>'<col class="c-per">').join("") + '</colgroup>';
+  const span = P.length + 2;
+  let h = "";
+
+  /* ---------- 자산 ---------- */
+  h += '<table class="grid">' + colgroup;
+  h += '<tr><td class="band" colspan="'+span+'">자산</td></tr>';
+  h += '<tr class="hdr"><th class="sticky1 hdr">구분</th><th class="sticky2 hdr">항목</th>'
+     + P.map((p,i)=>'<th class="perhdr hdr"><input data-plabel="'+i+'" value="'+esc(p.label)+'"></th>').join("")
+     + '</tr>';
+
+  ASSET_SECTIONS.forEach(sec=>{
+    sec.rows.forEach((row,ri)=>{
+      h += "<tr>";
+      if (ri === 0) h += '<td class="sticky1 grp" rowspan="'+(sec.rows.length+1)+'">'+sec.label+"</td>";
+      h += '<td class="sticky2">'+row.n+"</td>";
+      P.forEach((p,pi)=>{
+        if (isLocked(p,row)) h += '<td class="num locked">'+fmtBlank(cellValue(p,row))+"</td>";
+        else h += '<td class="num">'+inputCell("p."+pi+".v."+row.k, p.v[row.k])+"</td>";
+      });
+      h += "</tr>";
+    });
+    h += '<tr class="sum"><td class="sticky2">합계</td>'
+       + P.map((p,i)=>'<td class="num">'+fmt(cs[i][sec.id])+"</td>").join("") + "</tr>";
+  });
+
+  h += '<tr class="grand"><td class="sticky1 mid" colspan="2" style="text-align:center">자산 합계</td>'
+     + cs.map(c=>'<td class="num">'+fmt(c.assetTotal)+"</td>").join("") + "</tr>";
+  h += "</table>";
+
+  /* ---------- 부채 ---------- */
+  h += '<table class="grid">' + colgroup;
+  h += '<tr><td class="band-debt" colspan="'+span+'">부채</td></tr>';
+  h += '<tr class="hdr-debt"><th class="sticky1 hdr-debt">구분</th><th class="sticky2 hdr-debt">항목</th>'
+     + P.map(p=>'<th class="hdr-debt">'+esc(p.label)+"</th>").join("") + "</tr>";
+
+  const debtRowCount = DEBT_SECTIONS.reduce((a,s)=>a+s.rows.length+1, 0);
+  let firstDebtRow = true;
+  DEBT_SECTIONS.forEach(sec=>{
+    sec.rows.forEach((row,ri)=>{
+      h += "<tr>";
+      if (firstDebtRow){
+        h += '<td class="sticky1 grp" rowspan="'+debtRowCount+'">부채</td>';
+        firstDebtRow = false;
+      }
+      h += '<td class="sticky2">'+row.n+"</td>";
+      P.forEach((p,pi)=>{
+        h += '<td class="num">'+inputCell("p."+pi+".v."+row.k, p.v[row.k])+"</td>";
+      });
+      h += "</tr>";
+    });
+    h += '<tr class="sum-d"><td class="sticky2">합계</td>'
+       + P.map((p,i)=>'<td class="num">'+fmt(cs[i][sec.id])+"</td>").join("") + "</tr>";
+  });
+  h += '<tr class="grand-d"><td class="sticky1 mid" colspan="2" style="text-align:center">부채 합계</td>'
+     + cs.map(c=>'<td class="num">'+fmt(c.debtTotal)+"</td>").join("") + "</tr>";
+  h += "</table>";
+
+  /* ---------- 순자산 ---------- */
+  h += '<table class="grid">' + colgroup;
+  h += '<tr class="hdr-net"><th class="sticky1 hdr-net" colspan="2">구분</th>'
+     + P.map(p=>'<th class="hdr-net">'+esc(p.label)+"</th>").join("") + "</tr>";
+  h += '<tr class="netrow"><td class="sticky1 mid" colspan="2">순자산</td>'
+     + cs.map(c=>'<td class="num">'+fmt(c.net)+"</td>").join("") + "</tr>";
+  h += '<tr class="growth"><td class="sticky1 mid" colspan="2">상승률</td>'
+     + cs.map((c,i)=>{
+         if (i === 0 || !cs[i-1].net) return '<td class="num"></td>';
+         const g = (c.net/cs[i-1].net - 1) * 100;
+         return '<td class="num '+(g>=0?"up":"down")+'">'+g.toFixed(2)+"%</td>";
+       }).join("") + "</tr>";
+  h += "</table>";
+
+  document.getElementById("mainScroller").innerHTML = h;
+}
+
+/* =========================================================
+   주요 자산현황(상세)
+   ========================================================= */
+function renderDetail(){
+  const i = S.selected, p = S.periods[i];
+  const sel = document.getElementById("periodSel");
+  sel.innerHTML = S.periods.map((q,qi)=>'<option value="'+qi+'"'+(qi===i?" selected":"")+">"+esc(q.label)+"</option>").join("");
+  document.getElementById("useDetail").checked = p.useDetail;
+
+  const dis = p.useDetail ? "" : ' disabled style="opacity:.45"';
+  const pairRows = (label, group, key) =>
+    '<tr><td class="lbl" rowspan="2">'+label+'</td><td class="who">'+group[0]+'</td>'
+    + '<td class="num">'+inputCell("p."+i+".detail."+key+"."+group[0], p.detail[key][group[0]])+'</td></tr>'
+    + '<tr><td class="who">'+group[1]+'</td>'
+    + '<td class="num">'+inputCell("p."+i+".detail."+key+"."+group[1], p.detail[key][group[1]])+'</td></tr>';
+  const oneRow = (label, key) =>
+    '<tr><td class="lbl">'+label+'</td><td class="who"></td>'
+    + '<td class="num">'+inputCell("p."+i+".detail."+key, p.detail[key])+'</td></tr>';
+
+  let h = '<fieldset style="border:0;margin:0;padding:0"'+dis+'>';
+
+  h += '<table class="mini"><colgroup><col style="width:34%"><col style="width:28%"><col></colgroup>';
+  h += '<tr><td class="cap" colspan="3">지수투자</td></tr>';
+  h += pairRows("연금저축", PAIR, "yeongeum");
+  h += pairRows("ISA",      PAIR, "isa");
+  h += pairRows("증여",     GIFT, "jeungyeo");
+  h += '<tr><td class="lbl tot" colspan="2">지수합</td><td class="num tot">'+fmt(detailValue(p,"index"))+'</td></tr>';
+  h += '<tr><td class="cap" colspan="3">코인투자</td></tr>';
+  h += oneRow("비트코인","coin");
+  h += "</table>";
+
+  h += '<table class="mini" style="margin-top:10px"><colgroup><col style="width:34%"><col style="width:28%"><col></colgroup>';
+  h += '<tr><td class="cap" colspan="3">현금자산</td></tr>';
+  h += oneRow("카뱅","kbank");
+  h += pairRows("농협", PAIR, "nh");
+  h += '<tr><td class="lbl tot" colspan="2">농협합</td><td class="num tot">'+fmt(detailValue(p,"nh"))+'</td></tr>';
+  h += oneRow("청약저축","chungyak");
+  h += pairRows("장기저축", PAIR, "longterm");
+  h += pairRows("목돈급여", PAIR, "lumpsum");
+  h += '<tr><td class="lbl tot" colspan="2">현금합</td><td class="num tot">'+fmt(detailCashTotal(p))+'</td></tr>';
+  h += "</table></fieldset>";
+
+  document.getElementById("detailBox").innerHTML = h;
+}
+
+/* =========================================================
+   부동산·자동차 계산 (엑셀 57~59, 64~66행)
+   ========================================================= */
+function renderVeh(){
+  const i = S.selected, p = S.periods[i];
+  document.getElementById("vehPeriod").textContent = p.label;
+  document.getElementById("useVeh").checked = p.useVeh;
+
+  const row = (label, key) =>
+    '<tr><td class="lbl">'+label+'</td><td class="num">'
+    + inputCell("p."+i+".veh."+key, p.veh[key]) + "</td></tr>";
+
+  let h = '<table class="mini"><colgroup><col style="width:52%"><col></colgroup>';
+  h += '<tr><td class="cap" colspan="2">부동산</td></tr>';
+  h += row("파라곤","paragon");
+  h += row("신대","sindae");
+  h += '<tr><td class="lbl tot">합계</td><td class="num tot">'+fmt(vehValue(p,"estate"))+"</td></tr>";
+  h += '<tr><td class="cap" colspan="2">자동차</td></tr>';
+  h += row("싼타페","santafe");
+  h += row("그렌져","grandeur");
+  h += '<tr><td class="lbl tot">헤이딜러</td><td class="num tot">'+fmt(vehValue(p,"car"))+"</td></tr>";
+  h += "</table>";
+
+  document.getElementById("vehBox").innerHTML = h;
+}
+
+/* =========================================================
+   자산배분
+   ========================================================= */
+function renderAlloc(){
+  const i = S.selected, p = S.periods[i];
+  const a = allocation(p);
+  const KEYS = ["stock","realestate","coin","cash"];
+  const NAMES = { stock:"주식", realestate:"부동산", coin:"코인", cash:"현금성<br>자산" };
+
+  let h = '<table class="mini alloc"><colgroup><col style="width:22%">'
+        + KEYS.map(()=>'<col>').join("") + '<col></colgroup>';
+  h += '<tr><td class="cap" colspan="'+(KEYS.length+2)+'">자산배분 &nbsp;('+esc(p.label)+')</td></tr>';
+  h += '<tr class="ahdr"><th></th>' + KEYS.map(k=>"<th>"+NAMES[k]+"</th>").join("") + "<th>합계</th></tr>";
+
+  h += '<tr><td class="rowlbl">금액</td>'
+     + KEYS.map(k=>"<td>"+fmt(a.amt[k])+"</td>").join("")
+     + "<td>"+fmt(a.amt.total)+"</td></tr>";
+  h += '<tr><td class="rowlbl">비율</td>'
+     + KEYS.map(k=>"<td>"+a.ratio[k].toFixed(5)+"</td>").join("")
+     + "<td>"+a.ratio.total.toFixed(0)+"</td></tr>";
+  h += '<tr><td class="rowlbl">MDD</td>'
+     + KEYS.map(k=>'<td>'+inputCell("p."+i+".mdd."+k, p.mdd[k])+"</td>").join("")
+     + "<td></td></tr>";
+  h += '<tr><td class="rowlbl">환산MDD</td>'
+     + KEYS.map(k=>"<td>"+a.conv[k].toFixed(3)+"</td>").join("")
+     + "<td>"+a.conv.total.toFixed(3)+"</td></tr>";
+  h += "</table>";
+
+  document.getElementById("allocBox").innerHTML = h;
+
+  /* 참고 경고: 총자산 익스포저 기준 하방 */
+  const re = cellValue(p, ASSET_SECTIONS[3].rows[0]);       // 부동산(총액)
+  const grossLoss = a.amt.stock * num(p.mdd.stock)/100
+                  + re          * num(p.mdd.realestate)/100
+                  + a.amt.coin  * num(p.mdd.coin)/100;
+  const pct = a.amt.total ? grossLoss / a.amt.total * 100 : 0;
+  document.getElementById("allocWarn").innerHTML =
+    "참고 — 위 환산MDD <b>" + a.conv.total.toFixed(1) + "%</b>는 순자산 잔차 기준입니다. "
+    + "부동산 총액 " + fmt(re) + "만원(레버리지 포함)을 그대로 적용하면 같은 MDD 가정에서 "
+    + "손실은 <b>" + fmt(grossLoss) + "만원 = 순자산의 " + pct.toFixed(1) + "%</b>가 됩니다.";
+}
+
+/* =========================================================
+   차트 (순자산)
+   ========================================================= */
+function renderChart(){
+  const P = S.periods, cs = P.map(calc);
+  const W = 420, H = 200, padL = 44, padR = 8, padT = 12, padB = 34;
+  const vals = cs.map(c=>c.net);
+  const maxV = Math.max(1, ...vals);
+  const step = Math.pow(10, Math.floor(Math.log10(maxV))) / 2;
+  const top = Math.ceil(maxV / step) * step;
+  const iw = W - padL - padR, ih = H - padT - padB;
+  const bw = iw / Math.max(1, P.length);
+
+  let s = '<svg class="chart" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="xMidYMid meet">';
+  for (let g=0; g<=4; g++){
+    const y = padT + ih - ih*g/4;
+    s += '<line class="gl" x1="'+padL+'" y1="'+y+'" x2="'+(W-padR)+'" y2="'+y+'"/>';
+    s += '<text x="'+(padL-5)+'" y="'+(y+3)+'" text-anchor="end">'+Math.round(top*g/4).toLocaleString("ko-KR")+"</text>";
+  }
+  P.forEach((p,i)=>{
+    const v = vals[i];
+    const bh = top ? ih * (v/top) : 0;
+    const x = padL + bw*i + bw*0.22;
+    const y = padT + ih - bh;
+    s += '<rect class="bar" x="'+x+'" y="'+y+'" width="'+(bw*0.56)+'" height="'+Math.max(0,bh)+'"><title>'
+       + esc(p.label)+": "+fmt(v)+"만원</title></rect>";
+    s += '<text x="'+(padL+bw*i+bw/2)+'" y="'+(H-padB+13)+'" text-anchor="middle">'+esc(p.label)+"</text>";
+    s += '<text x="'+(padL+bw*i+bw/2)+'" y="'+(y-3)+'" text-anchor="middle">'+fmt(v)+"</text>";
+  });
+  s += "</svg>";
+  document.getElementById("chart").innerHTML = s;
+}
+
+/* =========================================================
+   전체 렌더
+   ========================================================= */
+function renderAll(){
+  renderMain();
+  renderDetail();
+  renderVeh();
+  renderAlloc();
+  renderChart();
+}
+
+/* =========================================================
+   이벤트
+   ========================================================= */
+document.addEventListener("input", e=>{
+  const t = e.target;
+
+  if (t.dataset && t.dataset.path !== undefined){
+    const raw = t.value.replace(/,/g,"").trim();
+    const val = raw === "" ? null : (isNaN(Number(raw)) ? null : Number(raw));
+    setByPath(t.dataset.path, val);
+    save();
+    /* 합계·자산배분·차트만 다시 그리면 되지만, 상세 연동 때문에 전체 갱신 후 포커스 복원 */
+    const path = t.dataset.path, pos = t.selectionStart;
+    renderAll();
+    const back = document.querySelector('[data-path="'+path+'"]');
+    if (back){ back.focus(); try{ back.setSelectionRange(pos,pos); }catch(_){} }
+    return;
+  }
+
+  if (t.dataset && t.dataset.plabel !== undefined){
+    const idx = Number(t.dataset.plabel);
+    S.periods[idx].label = t.value;
+    save();
+    renderDetail(); renderAlloc(); renderChart();
+    /* 부채·순자산 표의 머리글도 갱신 */
+    document.querySelectorAll(".hdr-debt, .hdr-net").forEach(()=>{});
+    const scrollLeft = document.getElementById("mainScroller").scrollLeft;
+    renderMain();
+    document.getElementById("mainScroller").scrollLeft = scrollLeft;
+    const back = document.querySelector('[data-plabel="'+idx+'"]');
+    if (back){ back.focus(); back.setSelectionRange(back.value.length, back.value.length); }
+    return;
+  }
+});
+
+document.getElementById("periodSel").addEventListener("change", e=>{
+  S.selected = Number(e.target.value);
+  save(); renderDetail(); renderVeh(); renderAlloc();
+});
+
+document.getElementById("useDetail").addEventListener("change", e=>{
+  S.periods[S.selected].useDetail = e.target.checked;
+  save(); renderAll();
+});
+
+document.getElementById("useVeh").addEventListener("change", e=>{
+  S.periods[S.selected].useVeh = e.target.checked;
+  save(); renderAll();
+});
+
+/* 기간 추가 */
+function nextLabel(){
+  const last = S.periods[S.periods.length-1];
+  const m = last && last.label.match(/^(\d+)년\s*(\d+)월$/);
+  if (m) return (Number(m[1])+1) + "년 " + m[2] + "월";
+  return "새 기간";
+}
+document.getElementById("btnAdd").addEventListener("click", ()=>{
+  const label = prompt("추가할 기간 이름을 입력하세요.", nextLabel());
+  if (label === null) return;
+  S.periods.push(newPeriod(label.trim() || nextLabel()));
+  S.selected = S.periods.length - 1;
+  save(); renderAll();
+});
+document.getElementById("btnDup").addEventListener("click", ()=>{
+  const label = prompt("직전 기간의 값을 복사해 새 기간을 만듭니다. 기간 이름을 입력하세요.", nextLabel());
+  if (label === null) return;
+  const src = S.periods[S.periods.length-1];
+  const copy = JSON.parse(JSON.stringify(src));
+  copy.label = label.trim() || nextLabel();
+  S.periods.push(copy);
+  S.selected = S.periods.length - 1;
+  save(); renderAll();
+});
+document.getElementById("btnDel").addEventListener("click", ()=>{
+  if (S.periods.length <= 1){ alert("기간이 하나뿐이라 삭제할 수 없습니다."); return; }
+  const p = S.periods[S.selected];
+  if (!confirm("'" + p.label + "' 기간을 삭제합니다. 되돌릴 수 없습니다. 진행할까요?")) return;
+  S.periods.splice(S.selected, 1);
+  S.selected = Math.min(S.selected, S.periods.length-1);
+  save(); renderAll();
+});
+
+/* JSON */
+document.getElementById("btnExport").addEventListener("click", ()=>{
+  const blob = new Blob([JSON.stringify(S, null, 2)], {type:"application/json"});
+  const a = document.createElement("a");
+  const d = new Date();
+  const stamp = d.getFullYear() + String(d.getMonth()+1).padStart(2,"0") + String(d.getDate()).padStart(2,"0");
+  a.href = URL.createObjectURL(blob);
+  a.download = "재무상태_" + stamp + ".json";
+  a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
+});
+document.getElementById("btnImport").addEventListener("click", ()=> document.getElementById("fileInput").click());
+document.getElementById("fileInput").addEventListener("change", e=>{
+  const f = e.target.files[0]; if (!f) return;
+  const r = new FileReader();
+  r.onload = ()=>{
+    try{
+      const d = JSON.parse(r.result);
+      if (!d || !Array.isArray(d.periods) || !d.periods.length) throw new Error("형식이 올바르지 않습니다.");
+      d.periods.forEach(normalizePeriod);
+      if (typeof d.selected !== "number" || d.selected >= d.periods.length) d.selected = d.periods.length-1;
+      S = d; save(); renderAll();
+      alert("불러왔습니다. 기간 " + S.periods.length + "개.");
+    }catch(err){ alert("불러오지 못했습니다: " + err.message); }
+    e.target.value = "";
+  };
+  r.readAsText(f, "utf-8");
+});
+
+document.getElementById("btnPrint").addEventListener("click", ()=> window.print());
+document.getElementById("btnReset").addEventListener("click", ()=>{
+  if (!confirm("입력한 내용을 모두 지우고 엑셀 원본(21년2월~26년2월) 상태로 되돌립니다. 진행할까요?")) return;
+  S = seedData(); save(); renderAll();
+});
+
+renderAll();
+</script>
+</body>
+</html>
