@@ -1,0 +1,10 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "finance": {
+      ".read": true,
+      ".write": "newData.hasChildren(['version', 'periods'])"
+    }
+  }
+}

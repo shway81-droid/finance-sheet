@@ -8,3 +8,5 @@
 
 # 로컬 도구 설정
 .claude/
+firebase-debug.log
+.firebase/
