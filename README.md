@@ -31,16 +31,30 @@
 
 ## 기기 간 동기화
 
-데이터는 저장소의 `data.json`에 있습니다.
+데이터는 Firebase Realtime Database 의 `finance` 노드에 있습니다.
+**기기마다 등록할 것이 없습니다.** 주소를 열기만 하면 어디서든 읽고 쓸 수 있습니다.
 
-- **읽기** — 토큰 없이 됩니다. 어느 기기에서 열어도 `data.json`을 먼저 확인해서,
-  처음 여는 기기면 그대로 불러오고, 이미 쓰던 기기면 더 최신 데이터가 있을 때 알림을 띄웁니다.
-- **쓰기** — `쓰기 토큰 등록`에 GitHub 토큰을 한 번 넣어두면, 값을 고칠 때마다
-  4초 뒤 `data.json`이 자동으로 갱신됩니다. 토큰은 그 브라우저에만 저장되고 저장소에는 올라가지 않습니다.
+- 처음 여는 기기는 서버 데이터를 그대로 가져옵니다.
+- 값을 고치면 1.5초 뒤 자동으로 올라갑니다.
+- 다른 기기는 열 때와 1분마다 확인해서, 더 최신 데이터가 있으면 알림만 띄웁니다.
+  (편집 중인 내용을 말없이 덮어쓰지 않기 위해 적용은 사용자가 누를 때만 합니다.)
 
-토큰은 github.com → Settings → Developer settings → Personal access tokens →
-Fine-grained tokens 에서 이 저장소의 **Contents: Read and write** 권한으로 발급합니다.
-값을 입력하는 기기(보통 주로 쓰는 PC)에만 등록하면 되고, 보기만 하는 기기에는 필요 없습니다.
+두 기기에서 동시에 고치면 나중에 올린 쪽이 남습니다.
+다른 기기로 옮겨 갈 때는 `서버에서 불러오기`를 먼저 누르고 편집하는 편이 안전합니다.
+
+### 보안 규칙
+
+`database.rules.json` 에 있으며 `firebase deploy --only database` 로 반영합니다.
+
+```json
+{ "rules": { ".read": false, ".write": false,
+             "finance": { ".read": true,
+                          ".write": "newData.hasChildren(['version', 'periods'])" } } }
+```
+
+`finance` 노드만 열려 있고, `version` 과 `periods` 를 가진 쓰기만 허용합니다.
+그래서 삭제(DELETE)나 엉뚱한 형식의 쓰기는 거부됩니다.
+다만 형식만 맞으면 주소를 아는 사람이 덮어쓸 수는 있으므로, `data.json` 을 백업으로 남겨 둡니다.
 
 ## 계산 방식
 
