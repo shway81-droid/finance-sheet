@@ -147,6 +147,25 @@
   .mini .tot{background:var(--computed);font-weight:700}
   .mini .cap{background:var(--hdr-asset);font-weight:700;text-align:center}
 
+  /* 부동산 칸 — 이름 편집 · 추가 · 삭제 */
+  .mini td.est{padding:2px 4px}
+  .estrow{display:flex;align-items:center;gap:3px}
+  input.ename{
+    flex:1;border:0;background:transparent;font:inherit;font-weight:700;
+    text-align:center;outline:none;min-width:0;
+  }
+  input.ename:focus{background:#fff6cc}
+  button.estdel{
+    padding:0 5px;font-size:12px;line-height:17px;
+    color:#8a949e;border-color:#e2e7ec;
+  }
+  button.estdel:hover{background:#fdecea;border-color:#d9534f;color:#b52b27}
+  button.estadd{
+    width:100%;padding:1px 6px;font-size:12px;font-weight:400;
+    color:#33587a;border-style:dashed;
+  }
+  button.estadd:hover{border-style:solid}
+
   /* 참고(고정) 표 */
   .refcard{margin-top:14px}
   .refcard h3{font-size:12px;margin:14px 0 6px;color:#444}
@@ -280,7 +299,9 @@
       </div>
       <div id="vehBox"></div>
       <div class="hint">
-        부동산 = 파라곤 + 신대, 자동차 = 싼타페 + 그렌져(헤이딜러 시세)입니다.
+        부동산 = 아래 부동산 칸의 합, 자동차 = 싼타페 + 그렌져(헤이딜러 시세)입니다.
+        부동산이 늘면 <b>＋ 부동산 추가</b>로 칸을 만들고, 이름은 칸을 눌러 바로 고칩니다.
+        칸 이름은 모든 기간이 함께 쓰고 금액만 기간별로 입력합니다.
         체크를 켜면 좌측 표의 <b>부동산·자동차</b> 칸이 이 합계로 자동 계산됩니다.
         엑셀 원본은 이 값을 손으로 옮겨 적어 일부 기간이 합계와 다르므로, 기본값은 꺼둔 상태입니다.
       </div>
@@ -312,6 +333,15 @@ const FB_URL = () => FB_DB.replace(/\/+$/, "") + "/finance.json";
 const syncOn = () => !!FB_DB;
 const PAIR  = ["혜정","화영"];
 const GIFT  = ["현준","민주"];
+
+/* 부동산 칸 — 이름은 모든 기간이 공유하고, 금액만 기간별로 갖습니다.
+   `S.estates` 에 {key, name} 으로 담기며, 금액은 예전처럼 `p.veh[key]` 에 들어갑니다.
+   그래서 칸을 늘려도 기존 데이터 구조는 그대로입니다. */
+const ESTATE_SEED = [{ key:"paragon", name:"파라곤" }, { key:"sindae", name:"신대" }];
+const CAR_KEYS = ["santafe","grandeur"];
+const cloneEstates = list => list.map(e => ({ key:e.key, name:e.name }));
+const estateList = () =>
+  (S && Array.isArray(S.estates) && S.estates.length) ? S.estates : ESTATE_SEED;
 
 const ASSET_SECTIONS = [
   { id:"cash",   label:"현금자산", rows:[
@@ -371,8 +401,11 @@ function emptyValues(){
   return v;
 }
 /* 부동산·자동차 산출 근거 (엑셀 57~59행, 64~66행) */
-function emptyVeh(){
-  return { paragon:null, sindae:null, santafe:null, grandeur:null };
+function emptyVeh(estates){
+  const v = {};
+  (estates || estateList()).forEach(e => v[e.key] = null);
+  CAR_KEYS.forEach(k => v[k] = null);
+  return v;
 }
 function newPeriod(label){
   return {
@@ -458,13 +491,15 @@ function seedData(){
     Object.keys(VEH).forEach(k => p.veh[k] = VEH[k][i]);
   });
 
-  return { version:2, periods, selected: periods.length - 1 };
+  return normalizeState({ version:2, periods, estates: cloneEstates(ESTATE_SEED),
+                          selected: periods.length - 1 });
 }
 
 /* =========================================================
    상태
    ========================================================= */
-let S = load();
+let S = null;
+S = load();
 
 function load(){
   try{
@@ -472,8 +507,7 @@ function load(){
     if (!raw) return seedData();
     const d = JSON.parse(raw);
     if (!d || !Array.isArray(d.periods) || !d.periods.length) return seedData();
-    d.periods.forEach(normalizePeriod);
-    migrate(d);
+    normalizeState(d);
     if (typeof d.selected !== "number" || d.selected >= d.periods.length) d.selected = d.periods.length - 1;
     return d;
   }catch(e){
@@ -496,11 +530,25 @@ function migrate(d){
   d.version = 2;
 }
 
-function normalizePeriod(p){
+/* 저장소·서버·불러온 파일에서 받은 상태를 앱이 다루는 형태로 맞춥니다.
+   부동산 목록(estates)을 먼저 세운 뒤 기간을 정규화해야 칸이 유실되지 않습니다. */
+function normalizeState(d){
+  const list = (Array.isArray(d.estates) ? d.estates : [])
+    .filter(e => e && typeof e.key === "string" && e.key)
+    .map(e => ({ key:e.key, name:(typeof e.name === "string" && e.name) ? e.name : e.key }));
+  d.estates = list.length ? list : cloneEstates(ESTATE_SEED);
+  d.periods.forEach(p => normalizePeriod(p, d.estates));
+  migrate(d);
+  return d;
+}
+
+function normalizePeriod(p, estates){
   const base = newPeriod(p.label);
   p.v = Object.assign(base.v, p.v || {});
   p.detail = deepMerge(base.detail, p.detail || {});
-  p.veh = Object.assign(base.veh, p.veh || {});
+  const veh = emptyVeh(estates), srcVeh = p.veh || {};
+  Object.keys(veh).forEach(k => { if (srcVeh[k] !== undefined) veh[k] = srcVeh[k]; });
+  p.veh = veh;
   p.mdd = Object.assign(base.mdd, p.mdd || {});
   if (typeof p.useDetail !== "boolean") p.useDetail = false;
   if (typeof p.useVeh !== "boolean") p.useVeh = false;
@@ -624,11 +672,12 @@ function detailCashTotal(p){
   return detailValue(p,"kbank") + detailValue(p,"nh") + detailValue(p,"chungyak")
        + detailValue(p,"longterm") + detailValue(p,"lumpsum");
 }
-/* 부동산 = 파라곤 + 신대, 자동차 = 싼타페 + 그렌져 */
+/* 부동산 = 등록된 부동산 칸의 합, 자동차 = 싼타페 + 그렌져 */
 function vehValue(p, key){
   const v = p.veh;
-  return key === "estate" ? num(v.paragon) + num(v.sindae)
-                          : num(v.santafe) + num(v.grandeur);
+  return key === "estate"
+    ? estateList().reduce((a,e) => a + num(v[e.key]), 0)
+    : CAR_KEYS.reduce((a,k) => a + num(v[k]), 0);
 }
 /* 해당 기간의 특정 항목 값 (상세 연동 여부 반영) */
 function cellValue(p, row){
@@ -832,10 +881,21 @@ function renderVeh(){
     '<tr><td class="lbl">'+label+'</td><td class="num">'
     + inputCell("p."+i+".veh."+key, p.veh[key]) + "</td></tr>";
 
+  /* 부동산 칸은 이름을 바로 고칠 수 있고, 개수도 늘리거나 줄일 수 있습니다. */
+  const estates = estateList();
+  const estateRow = (e, ei) =>
+    '<tr><td class="lbl est"><div class="estrow">'
+    + '<input class="ename" data-ename="'+ei+'" value="'+esc(e.name)+'">'
+    + (estates.length > 1
+        ? '<button class="estdel" data-edel="'+ei+'" title="'+esc(e.name)+' 칸 삭제">×</button>' : "")
+    + '</div></td><td class="num">'
+    + inputCell("p."+i+".veh."+e.key, p.veh[e.key]) + "</td></tr>";
+
   let h = '<table class="mini"><colgroup><col style="width:52%"><col></colgroup>';
   h += '<tr><td class="cap" colspan="2">부동산</td></tr>';
-  h += row("파라곤","paragon");
-  h += row("신대","sindae");
+  h += estates.map(estateRow).join("");
+  h += '<tr><td class="est" colspan="2">'
+     + '<button class="estadd" data-eadd="1">＋ 부동산 추가</button></td></tr>';
   h += '<tr><td class="lbl tot">합계</td><td class="num tot">'+fmt(vehValue(p,"estate"))+"</td></tr>";
   h += '<tr><td class="cap" colspan="2">자동차</td></tr>';
   h += row("싼타페","santafe");
@@ -951,6 +1011,13 @@ document.addEventListener("input", e=>{
     return;
   }
 
+  if (t.dataset && t.dataset.ename !== undefined){
+    const est = estateList()[Number(t.dataset.ename)];
+    if (est){ est.name = t.value; save(); }
+    /* 이름은 합계에 영향이 없으므로 다시 그리지 않습니다(입력 중 포커스 유지). */
+    return;
+  }
+
   if (t.dataset && t.dataset.plabel !== undefined){
     const idx = Number(t.dataset.plabel);
     S.periods[idx].label = t.value;
@@ -964,6 +1031,42 @@ document.addEventListener("input", e=>{
     const back = document.querySelector('[data-plabel="'+idx+'"]');
     if (back){ back.focus(); back.setSelectionRange(back.value.length, back.value.length); }
     return;
+  }
+});
+
+/* 부동산 칸 추가·삭제 (버튼이 매번 다시 그려지므로 위임으로 처리) */
+function nextEstateKey(){
+  const used = new Set(CAR_KEYS);
+  estateList().forEach(e => used.add(e.key));
+  S.periods.forEach(p => Object.keys(p.veh || {}).forEach(k => used.add(k)));
+  let n = 1;
+  while (used.has("estate" + n)) n++;
+  return "estate" + n;
+}
+document.addEventListener("click", e=>{
+  const add = e.target.closest("[data-eadd]");
+  if (add){
+    const name = prompt("추가할 부동산 이름을 입력하세요.", "새 부동산");
+    if (name === null) return;
+    const key = nextEstateKey();
+    S.estates.push({ key, name: name.trim() || "새 부동산" });
+    S.periods.forEach(p => { if (!(key in p.veh)) p.veh[key] = null; });
+    save(); renderAll();
+    const back = document.querySelector('[data-path="p.'+S.selected+'.veh.'+key+'"]');
+    if (back) back.focus();
+    return;
+  }
+
+  const del = e.target.closest("[data-edel]");
+  if (del){
+    const ei = Number(del.dataset.edel);
+    const est = S.estates[ei];
+    if (!est) return;
+    if (S.estates.length <= 1){ alert("부동산 칸이 하나뿐이라 삭제할 수 없습니다."); return; }
+    if (!confirm("‘" + est.name + "’ 칸을 지우면 모든 기간의 금액이 함께 사라집니다. 삭제할까요?")) return;
+    S.estates.splice(ei, 1);
+    S.periods.forEach(p => { delete p.veh[est.key]; });
+    save(); renderAll();
   }
 });
 
@@ -1034,7 +1137,7 @@ document.getElementById("fileInput").addEventListener("change", e=>{
     try{
       const d = JSON.parse(r.result);
       if (!d || !Array.isArray(d.periods) || !d.periods.length) throw new Error("형식이 올바르지 않습니다.");
-      d.periods.forEach(normalizePeriod);
+      normalizeState(d);
       if (typeof d.selected !== "number" || d.selected >= d.periods.length) d.selected = d.periods.length-1;
       S = d; save(); renderAll();
       alert("불러왔습니다. 기간 " + S.periods.length + "개.");
@@ -1065,8 +1168,7 @@ async function pullRemote(){
   try{
     const r = await fetchRemote();
     if (!r){ setSyncState("서버에 데이터가 없습니다", "warn"); return; }
-    r.state.periods.forEach(normalizePeriod);
-    migrate(r.state);
+    normalizeState(r.state);
     if (typeof r.state.selected !== "number" || r.state.selected >= r.state.periods.length)
       r.state.selected = r.state.periods.length - 1;
     S = r.state;
