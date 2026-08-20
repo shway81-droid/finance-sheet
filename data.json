@@ -478,6 +478,16 @@
    }
   }
  ],
+ "estates": [
+  {
+   "key": "paragon",
+   "name": "파라곤"
+  },
+  {
+   "key": "sindae",
+   "name": "신대"
+  }
+ ],
  "selected": 6,
  "updatedAt": "2026-08-20T13:37:08.131Z"
 }
