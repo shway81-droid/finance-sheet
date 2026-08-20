@@ -412,7 +412,7 @@
   {
    "label": "26년 8월",
    "useDetail": true,
-   "useVeh": false,
+   "useVeh": true,
    "v": {
     "kbank": null,
     "deposit": null,
@@ -426,49 +426,49 @@
     "btc": null,
     "invEtc": null,
     "life": null,
-    "pensionIns": null,
+    "pensionIns": 6000,
     "realestate": null,
     "car": null,
     "rentdep": null,
-    "creditloan": null,
+    "creditloan": 47000,
     "debtEtc1": null,
-    "leasedep": null,
+    "leasedep": 75000,
     "debtEtc2": null
    },
    "detail": {
     "yeongeum": {
-     "혜정": 1,
-     "화영": 1
+     "혜정": 6030,
+     "화영": 8023
     },
     "isa": {
-     "혜정": 1,
-     "화영": 1
+     "혜정": 2538,
+     "화영": 762
     },
     "jeungyeo": {
-     "현준": 1,
-     "민주": 1
+     "현준": 4593,
+     "민주": 4593
     },
-    "coin": null,
-    "kbank": null,
+    "coin": 620,
+    "kbank": 2700,
     "nh": {
-     "혜정": null,
-     "화영": null
+     "혜정": 409,
+     "화영": 1655
     },
-    "chungyak": null,
+    "chungyak": 608,
     "longterm": {
-     "혜정": null,
-     "화영": null
+     "혜정": 1150,
+     "화영": 2295
     },
     "lumpsum": {
-     "혜정": null,
-     "화영": null
+     "혜정": 0,
+     "화영": 0
     }
    },
    "veh": {
-    "paragon": null,
-    "sindae": null,
-    "santafe": null,
-    "grandeur": null
+    "paragon": 49250,
+    "sindae": 100250,
+    "santafe": 1000,
+    "grandeur": 2300
    },
    "mdd": {
     "stock": 50,
@@ -479,5 +479,5 @@
   }
  ],
  "selected": 6,
- "updatedAt": "2026-08-05T02:02:28.747Z"
+ "updatedAt": "2026-08-20T13:37:08.131Z"
 }
